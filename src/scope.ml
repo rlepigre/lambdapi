@@ -192,7 +192,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
-    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)
+    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) [|scope env u|]
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
@@ -224,13 +224,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
+        _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) [|t|]
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
         let sym_z = get_builtin t.pos ss "0"  in
         let sym_s = get_builtin t.pos ss "+1" in
         let rec unsugar_nat_lit acc n =
-          if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
+          if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s [|acc|]) (n-1)
         in
         unsugar_nat_lit sym_z n
   in
@@ -315,7 +315,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     | Symb(s,h)                 -> (s, h, args)
     | _                         -> fatal p_lhs.pos "No head symbol in LHS."
   in
-  if lhs = [] && !verbose > 1 then
+  if Array.length lhs = 0 && !verbose > 1 then
     wrn p_lhs.pos "LHS head symbol with no argument.";
   (* We scope the RHS and bind the meta-variables. *)
   let names = Array.of_list (List.map fst map) in
@@ -328,7 +328,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   (* We also store [pvs] to facilitate confluence / termination checking. *)
   let ctxt = Array.of_list pvs in
   (* We put everything together to build the rule. *)
-  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; ctxt})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity = Array.length lhs; ctxt})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)

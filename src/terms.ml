@@ -22,7 +22,7 @@ type term =
   (** Dependent product. *)
   | Abst of term * (term, term) Bindlib.binder
   (** Abstraction. *)
-  | Appl of term * term
+  | Appl of term * term array
   (** Application. *)
   | Meta of meta * term array
   (** Metavariable with its environment. *)
@@ -34,6 +34,9 @@ type term =
   (** Wildcard term (corresponding to "_" in patterns). *)
   | TRef of term option ref
   (** Reference cell (used for surface matching). *)
+
+(* NOTE we enforce the invariant that in {!const:Appl(h,args)} the term [h] is
+   not itself an application node. *)
 
 (** Printing hint for symbols. *)
  and pp_hint =
@@ -104,7 +107,7 @@ type term =
 
 (** Representation of a rewriting rule. *)
  and rule =
-  { lhs   : term list
+  { lhs   : term array
   (** Left  hand side.  *)
   ; rhs   : (term_env, term) Bindlib.mbinder
   (** Right hand side.  *)
@@ -227,7 +230,8 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     ; sym_rules = ref []
     ; sym_mode  = Const }
   in
-  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
+  let s = Symb(s, Alias("#")) in
+  if Array.length e = 0 then s else Appl(s,e)
 
 (* NOTE [term_of_meta] must rely on a fresh symbol instead of a fresh variable
    as otherwise we would need to polute the typing context with variables that
@@ -276,10 +280,16 @@ let _Kind : tbox = Bindlib.box Kind
 let _Symb : sym -> pp_hint -> tbox = fun s h ->
   Bindlib.box (Symb(s,h))
 
-(** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
-    terms [t] and [u]. *)
-let _Appl : tbox -> tbox -> tbox =
-  Bindlib.box_apply2 (fun t u -> Appl(t,u))
+(** [_Appl t args] lifts an application node to the {!type:tbox} type, given a
+    boxed term [t] and an array of boxed arguments [args]. *)
+let _Appl : tbox -> tbox array -> tbox = fun t args ->
+  let fn t args =
+    if Array.length args = 0 then t else
+    match unfold t with
+    | Appl(t,a) -> Appl(t, Array.append a args)
+    | t         -> Appl(t, args)
+  in
+  Bindlib.box_apply2 fn t (Bindlib.box_array args)
 
 (** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
     a boxed term [a] for the domain of the product, and a boxed binder [b] for
@@ -334,7 +344,7 @@ let rec lift : term -> tbox = fun t ->
   | Symb(s,h)   -> _Symb s h
   | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
   | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
-  | Appl(t,u)   -> _Appl (lift t) (lift u)
+  | Appl(t,a)   -> _Appl (lift t) (Array.map lift a)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)

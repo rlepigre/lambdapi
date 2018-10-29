@@ -47,28 +47,26 @@ let rec solve : problems -> conv_constrs = fun p ->
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
-  let (h1, ts1) = Eval.whnf_stk t1 [] in
-  let (h2, ts2) = Eval.whnf_stk t2 [] in
+  let (h1, ts1) = Eval.whnf_stk t1 [||] in
+  let (h2, ts2) = Eval.whnf_stk t2 [||] in
   if !log_enabled then
     begin
-      let t1 = Eval.to_term h1 ts1 in
-      let t2 = Eval.to_term h2 ts2 in
+      let t1 = Basics.add_args h1 ts1 in
+      let t2 = Basics.add_args h2 ts2 in
       log_solv "solve_aux [%a] [%a]" pp t1 pp t2;
     end;
   let add_to_unsolved () =
-    let t1 = Eval.to_term h1 ts1 in
-    let t2 = Eval.to_term h2 ts2 in
+    let t1 = Basics.add_args h1 ts1 in
+    let t2 = Basics.add_args h2 ts2 in
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
   let decompose () =
-    let add_args =
-      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
-    in solve {p with to_solve = add_args p.to_solve ts1 ts2}
+    solve {p with to_solve = List.add_array2 ts1 ts2 p.to_solve}
   in
   let error () =
-    let t1 = Eval.to_term h1 ts1 in
-    let t2 = Eval.to_term h2 ts2 in
+    let t1 = Basics.add_args h1 ts1 in
+    let t2 = Basics.add_args h2 ts2 in
     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
   in
   match (h1, h2) with
@@ -82,28 +80,29 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
       solve {p with to_solve = (a1,a2) :: (b1,b2) :: p.to_solve}
 
   | (Vari(x1)   , Vari(x2)   )
-       when Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 ->
+       when Bindlib.eq_vars x1 x2 && Array.length ts1 = Array.length ts2 ->
      decompose ()
 
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
+       let same_length = Array.length ts1 = Array.length ts2 in
        match s1.sym_mode with
-       | Const ->
-          if List.same_length ts1 ts2 then decompose () else error ()
-       | Injec ->
-          if List.same_length ts1 ts2 then decompose ()
-          else if !(s1.sym_rules) = [] then error ()
-          else add_to_unsolved ()
-       | Defin ->
-          if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
-          then add_to_unsolved ()
-          else error ()
+       | Const when same_length          -> decompose ()
+       | Const                           -> error ()
+       | Injec when same_length          -> decompose ()
+       | Injec when !(s1.sym_rules) = [] -> error ()
+       | Injec                           -> add_to_unsolved ()
+       | Defin when !(s1.sym_rules) = [] -> add_to_unsolved ()
+       | Defin when same_length          -> add_to_unsolved ()
+       | Defin                           -> error ()
      else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
-  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
+  | (Meta(m,ts) , _          )
+        when Array.length ts1 = 0 && instantiate m ts t2 ->
       solve {p with recompute = true}
-  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
+  | (_          , Meta(m,ts) )
+        when Array.length ts2 = 0 && instantiate m ts t1 ->
       solve {p with recompute = true}
 
   | (Meta(_,_)  , _          )

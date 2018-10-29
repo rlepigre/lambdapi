@@ -11,24 +11,20 @@ let to_tvars : term array -> tvar array =
   Array.map (function Vari(x) -> x | _ -> assert false)
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
-    [h] is the head term of [t] and [args] is the list of arguments applied to
-    [h] in [t]. The returned [h] cannot be an {!constr:Appl} node. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get_args acc t =
-    match unfold t with
-    | Appl(t,u) -> get_args (u::acc) t
-    | t         -> (t, acc)
-  in get_args [] t
+    [h] and [args] are respectively the head of [t] and the array of arguments
+    applied to [h] in [t]. The returned [h] cannot be an {!constr:Appl}. *)
+let get_args : term -> term * term array = fun t ->
+  match unfold t with
+  | Appl(t,args) -> (t, args)
+  | t            -> (t, [||])
 
-(** [add_args t args] builds the application of the {!type:term} [t] to a list
-    arguments [args]. When [args] is empty, the returned value is (physically)
-    equal to [t]. *)
-let add_args : term -> term list -> term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | u::args -> add_args (Appl(t,u)) args
-  in add_args t args
+(** [add_args t args] builds the application of [t] to the elements of [args].
+    When [args] is empty, the returned value is (physically) equal to [t]. *)
+let add_args : term -> term array -> term = fun t args ->
+  if Array.length args = 0 then t else
+  match unfold t with
+  | Appl(t,a) -> Appl(t, Array.append a args)
+  | t         -> Appl(t, args)
 
 (** [eq t u] tests the equality of [t] and [u] modulo α-equivalence. Note that
     the behavious of the function is unspecified when [t] or [u] contain terms
@@ -48,7 +44,11 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
-    | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
+    | (Appl(t1,a1), Appl(t2,a2)) ->
+        if a1 == a2 then eq ((t1,t2)::l)
+        else if Array.length a1 = Array.length a2 then
+          eq ((t1,t2) :: List.add_array2 a1 a2 l)
+        else raise Not_equal
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
         eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
     | (Wild       , _          )
@@ -96,7 +96,7 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
     | Meta(_,ts) -> Array.iter (iter xs) ts
     | Prod(a,b)
     | Abst(a,b)  -> let (x,b) = Bindlib.unbind b in iter xs a; iter (x::xs) b
-    | Appl(t,u)  -> iter xs t; iter xs u
+    | Appl(t,a)  -> iter xs t; Array.iter (iter xs) a
   in
   iter [] (cleanup t)
 
@@ -116,7 +116,7 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   | Symb(_)    -> ()
   | Prod(a,b)
   | Abst(a,b)  -> iter_meta f a; iter_meta f (Bindlib.subst b Kind)
-  | Appl(t,u)  -> iter_meta f t; iter_meta f u
+  | Appl(t,a)  -> iter_meta f t; Array.iter (iter_meta f) a
   | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As

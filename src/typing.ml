@@ -81,7 +81,13 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
   (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
      ------------------------------------
          ctx ⊢ Appl(t,u) ⇒ subst b u      *)
-  | Appl(t,u)   ->
+  | Appl(t,a)   ->
+      let (t,u) =
+        let len = Array.length a in
+        if len = 0 then assert false;
+        if len = 1 then (t, a.(0)) else
+        (Appl(t, Array.sub a 0 (len-1)), a.(len-1))
+      in
       (* We first infer a product type for [t]. *)
       let (a,b) =
         let c = Eval.whnf (infer_aux conv ctx t) in

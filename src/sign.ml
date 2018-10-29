@@ -69,14 +69,14 @@ let link : t -> unit = fun sign ->
     | Symb(s,h)   -> Symb(link_symb s, h)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
-    | Appl(t,u)   -> Appl(link_term t, link_term u)
+    | Appl(t,a)   -> Appl(link_term t, Array.map link_term a)
     | Meta(_,_)   -> assert false
     | Patt(i,n,m) -> Patt(i, n, Array.map link_term m)
     | TEnv(t,m)   -> TEnv(t, Array.map link_term m)
     | Wild        -> t
     | TRef(_)     -> t
   and link_rule r =
-    let lhs = List.map link_term r.lhs in
+    let lhs = Array.map link_term r.lhs in
     let (xs, rhs) = Bindlib.unmbind r.rhs in
     let rhs = lift (link_term rhs) in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
@@ -131,14 +131,14 @@ let unlink : t -> unit = fun sign ->
     | Symb(s,_)    -> if s.sym_path <> sign.sign_path then unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
-    | Appl(t,u)    -> unlink_term t; unlink_term u
+    | Appl(t,a)    -> unlink_term t; Array.iter unlink_term a
     | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
     | Wild         -> ()
     | TRef(_)      -> ()
   and unlink_rule r =
-    List.iter unlink_term r.lhs;
+    Array.iter unlink_term r.lhs;
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in

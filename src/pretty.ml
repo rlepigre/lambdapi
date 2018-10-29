@@ -29,6 +29,9 @@ let rec pp_p_term : p_term pp = fun oc t ->
     let pp_env _ ar =
       if Array.length ar > 0 then out "[%a]" (Array.pp (pp PFunc) ", ") ar
     in
+    let pp_atom = pp PAtom in
+    let pp_appl = pp PAppl in
+    let pp_func = pp PFunc in
     match (t.elt, p) with
     | (P_Type            , _    ) -> out "TYPE"
     | (P_Vari(qid)       , _    ) -> out "%a" pp_qident qid
@@ -36,15 +39,15 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | (P_Meta(x,ar)      , _    ) -> out "?%a%a" pp_ident x pp_env ar
     | (P_Patt(x,ar)      , _    ) -> out "&%a%a" pp_ident x pp_env ar
     | (P_Appl(t,u)       , PAppl)
-    | (P_Appl(t,u)       , PFunc) -> out "%a@ %a" (pp PAppl) t (pp PAtom) u
-    | (P_Impl(a,b)       , PFunc) -> out "%a@ ⇒ %a" (pp PAppl) a (pp PFunc) b
-    | (P_Abst(args,t)    , PFunc) -> out "λ%a,@ %a" pp_p_args args (pp PFunc) t
-    | (P_Prod(args,b)    , PFunc) -> out "∀%a,@ %a" pp_p_args args (pp PFunc) b
+    | (P_Appl(t,u)       , PFunc) -> out "%a@ %a" pp_appl t pp_atom u
+    | (P_Impl(a,b)       , PFunc) -> out "%a@ ⇒ %a" pp_appl a pp_func b
+    | (P_Abst(args,t)    , PFunc) -> out "λ%a,@ %a" pp_p_args args pp_func t
+    | (P_Prod(args,b)    , PFunc) -> out "∀%a,@ %a" pp_p_args args pp_func b
     | (P_LLet(x,args,t,u), PFunc) ->
-        out "@[<hov 2>let %a%a = %a@]@ in@ %a" pp_ident x pp_p_args args
-          (pp PFunc) t (pp PFunc) u
+        out "@[<hov 2>let %a%a = %a@]@ in@ %a"
+          pp_ident x pp_p_args args pp_func t pp_func u
     | (P_NLit(i)         , _    ) -> out "%i" i
-    | (_                 , _    ) -> out "(%a)" (pp PFunc) t
+    | (_                 , _    ) -> out "(%a)" pp_func t
   in
   let rec pp_toplevel _ t =
     match t.elt with

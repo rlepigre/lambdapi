@@ -1,5 +1,6 @@
 (** Type-checking and inference. *)
 
+open Extra
 open Timed
 open Console
 open Terms
@@ -23,15 +24,14 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     | (a,b)::cs ->
     let (ha,argsa) = Basics.get_args a in
     let (hb,argsb) = Basics.get_args b in
-    let na = List.length argsa in
-    let nb = List.length argsb in
+    let na = Array.length argsa in
+    let nb = Array.length argsb in
     match (unfold ha, unfold hb) with
     | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && Sign.is_inj sa ->
-        let fn l t1 t2 = (t1,t2) :: l in
-        build_sub acc (List.fold_left2 fn cs argsa argsb)
-    | (Vari(x)   , _         ) when argsa = [] -> build_sub ((x,b)::acc) cs
-    | (_         , Vari(x)   ) when argsb = [] -> build_sub ((x,a)::acc) cs
-    | (_         , _         )                 -> build_sub acc cs
+        build_sub acc (List.add_array2 argsa argsb cs)
+    | (Vari(x)   , _         ) when na = 0 -> build_sub ((x,b)::acc) cs
+    | (_         , Vari(x)   ) when nb = 0 -> build_sub ((x,a)::acc) cs
+    | (_         , _         )             -> build_sub acc cs
   in
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
@@ -81,7 +81,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
     | Symb(s,h)   -> _Symb s h
     | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
                      _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
-    | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
+    | Appl(t,a)   -> _Appl (to_m (k+1) t) (Array.map (to_m 0) a)
     | Patt(i,n,a) ->
         begin
           let a = Array.map (to_m 0) a in
@@ -106,7 +106,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
     | Wild        -> assert false (* Cannot appear in LHS. *)
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
-  let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
+  let lhs = Array.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs in
   (* We substitute the RHS with the corresponding metavariables.*)
   let fn m =

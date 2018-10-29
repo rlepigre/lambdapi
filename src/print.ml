@@ -45,8 +45,9 @@ let pp_term : term pp = fun oc t ->
     | (Patt(_,n,e), _    ) -> out oc "&%s%a" n pp_env e
     | (TEnv(t,e)  , _    ) -> out oc "&%a%a" pp_term_env t pp_env e
     (* Applications are printed when priority is above [`Appl]. *)
-    | (Appl(t,u)  , `Appl)
-    | (Appl(t,u)  , `Func) -> out oc "%a %a" pp_appl t pp_atom u
+    | (Appl(t,a)  , `Appl)
+    | (Appl(t,a)  , `Func) ->
+        out oc "%a %a" pp_appl t (Array.pp pp_atom " ") a
     (* Abstractions and products are only printed at priority [`Func]. *)
     | (Abst(a,t)  , `Func) ->
         let (x,t) = Bindlib.unbind t in

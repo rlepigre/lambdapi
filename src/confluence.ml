@@ -36,9 +36,12 @@ let print_term : bool -> term pp = fun lhs ->
     | Symb(s,_)    -> print_sym oc s
     | Patt(i,n,ts) ->
         if ts = [||] then out "&%s" n else
-        pp oc (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
+        pp oc (Basics.add_args (Patt(i,n,[||])) ts)
     (* Applications are printed when priority is above [`Appl]. *)
-    | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
+    | Appl(t,args) ->
+        Array.iter (fun _ -> out "app(") args;
+        out "%a" pp t;
+        Array.iter (fun u -> out ",%a)" pp u) args
     (* Abstractions and products are only printed at priority [`Func]. *)
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
@@ -63,7 +66,7 @@ let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
     List.iter (Basics.iter fn) ts;
     List.sort_uniq String.compare Pervasives.(!names)
   in
-  let names = get_patt_names r.lhs in
+  let names = get_patt_names (Array.to_list r.lhs) in
   if names <> [] then
     begin
       let print_name oc x = Format.fprintf oc "  &%s : term" x in
