@@ -80,28 +80,29 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
 
   (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
      ------------------------------------
-         ctx ⊢ Appl(t,u) ⇒ subst b u      *)
-  | Appl(t,a)   ->
-      let (t,u) =
-        let len = Array.length a in
-        if len = 0 then assert false;
-        if len = 1 then (t, a.(0)) else
-        (Appl(t, Array.sub a 0 (len-1)), a.(len-1))
+       ctx ⊢ Appl(t,[|u|]) ⇒ subst b u      *)
+  | Appl(t,ar)  ->
+      (* We first infer the type of the head. *)
+      let c = infer_aux conv ctx t in
+      (* Substitute and check arguments one by one. *)
+      let len = Array.length ar in
+      let rec get_type i c =
+        if i >= len then c else
+        (* Extract product data from [c]. *)
+        let (a,b) =
+          match Eval.whnf c with
+          | Prod(a,b) -> (a,b)
+          | c         ->
+              let a = make_prod_domain ctx in
+              let b = make_prod_codomain ctx a in
+              conv c (Prod(a,b)); (a,b)
+        in
+        (* We then check the [i]-th argument against type [a]. *)
+        check_aux conv ctx ar.(i) a;
+        (* We continue with the next argument. *)
+        get_type (i+1) (Bindlib.subst b ar.(i))
       in
-      (* We first infer a product type for [t]. *)
-      let (a,b) =
-        let c = Eval.whnf (infer_aux conv ctx t) in
-        match c with
-        | Prod(a,b) -> (a,b)
-        | _         ->
-            let a = make_prod_domain ctx in
-            let b = make_prod_codomain ctx a in
-            conv c (Prod(a,b)); (a,b)
-      in
-      (* We then check the type of [u] against the domain type. *)
-      check_aux conv ctx u a;
-      (* We produce the returned type. *)
-      Bindlib.subst b u
+      get_type 0 c
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
