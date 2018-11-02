@@ -69,6 +69,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
       | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
       | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
+      | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
   in
@@ -117,6 +118,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
     | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
     | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
+    | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
@@ -230,6 +232,7 @@ line:
       make_pos $loc (P_assert(mf, P_assert_conv(t,u)))
     }
   | r=REQUIRE    DOT {
+      Pervasives.(!(Parser.require)) r;
       make_pos $loc (P_require(r, P_require_default))
     }
   | EOF {

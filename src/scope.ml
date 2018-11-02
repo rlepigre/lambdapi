@@ -233,6 +233,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s [|acc|]) (n-1)
         in
         unsugar_nat_lit sym_z n
+    | (P_BinO(l,b,r)  , _         ) ->
+        let (s, _) = find_sym true ss (snd b) in
+        _Appl (_Symb s (Binary(fst b))) [|scope env l; scope env r|]
   in
   scope env t
 
@@ -274,6 +277,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
     | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
     | P_NLit(_)        -> acc
+    | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
   and arg_patt_vars acc xs =
     match xs with
     | []                 -> acc

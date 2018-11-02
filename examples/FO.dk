@@ -72,8 +72,15 @@ def exists_intro: P:(Term->Prop) -> t:Term -> prf (P t) -> prf (exists P)
 	A:Prop => f:(x:Term -> prf (P x) -> prf A) => f t p.
 
 def exists_elim: P:(Term->Prop) -> Q:Prop -> prf (exists P) -> prf (forall (x => imp (P x) Q)) -> prf Q
+:= P:(Term->Prop) => Q:Prop => p1:prf (exists P) => p2:prf (forall (x:Term => imp (P x) Q))
+	=> p1 Q p2.
+
+(; FIXME metavariable for type of x in (forall (x => imp (P x) Q)) not instantiated. ;)
+(;
+def exists_elim: P:(Term->Prop) -> Q:Prop -> prf (exists P) -> prf (forall (x => imp (P x) Q)) -> prf Q
 := P:(Term->Prop) => Q:Prop => p1:prf (exists P) => p2:prf (forall (x => imp (P x) Q))
 	=> p1 Q p2.
+;)
 
 (; Equality ;)
 

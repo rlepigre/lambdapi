@@ -43,6 +43,7 @@ type term =
   | Nothing             (** Just print the name of the symbol. *)
   | Qualified           (** Fully qualify the symbol name.     *)
   | Alias     of string (** Use the given alias as qualifier.  *)
+  | Binary    of string (** Show as the given binary operator. *)
 
 (** Representation of an higher-order term. *)
  and term_env =

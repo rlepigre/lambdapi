@@ -13,7 +13,8 @@ type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
-  ; sign_builtins : (sym * pp_hint) StrMap.t ref }
+  ; sign_builtins : (sym * pp_hint) StrMap.t ref
+  ; sign_binops   : (sym * pp_hint) StrMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -22,8 +23,8 @@ type t =
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
-  { sign_path ; sign_symbols = ref StrMap.empty
-  ; sign_deps = ref PathMap.empty ; sign_builtins = ref StrMap.empty }
+  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
+  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -156,6 +157,11 @@ let unlink : t -> unit = fun sign ->
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The created symbol is also returned. *)
 let add_symbol : t -> sym_mode -> strloc -> term -> sym = fun sign mode s a ->
+  (* Check for metavariables in the symbol type. *)
+  let nb = List.length (Basics.get_metas a) in
+  if nb > 0 then
+    fatal s.pos "The type symbol [%s] contains [%i] metavariables" s.elt nb;
+  (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_rules = ref [] ; sym_mode = mode }
@@ -206,9 +212,14 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
-    signature [sign]). *)
+    signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
   sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
+
+(** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].
+    If [op] was previously bound, the previous binding is discarded. *)
+let add_binop : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
+  sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

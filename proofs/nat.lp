@@ -17,20 +17,22 @@ definition forty_two ≔ 42
 // Addition function.
 
 symbol add : N ⇒ N ⇒ N
+set binop "+" ≔ add
 
-rule add z      &n     → &n
-rule add (s &m) &n     → s (add &m &n)
-rule add &m     z      → &m
-rule add &m     (s &n) → s (add &m &n)
+rule z      + &n     → &n
+rule (s &m) + &n     → s (&m + &n)
+rule &m     + z      → &m
+rule &m     + (s &n) → s (&m + &n)
 
 // Multiplication function.
 
 symbol mul : N ⇒ N ⇒ N
+set binop "×" ≔ mul
 
-rule mul z      _      → z
-rule mul (s &m) &n     → add &n (mul &m &n)
-rule mul _      z      → z
-rule mul &m     (s &n) → add &m (mul &m &n)
+rule z      × _      → z
+rule (s &m) × &n     → &n + (&m × &n)
+rule _      × z      → z
+rule &m     × (s &n) → &m + (&m × &n)
 
 // Doubling function.
 
