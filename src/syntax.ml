@@ -10,8 +10,17 @@ type ident = strloc
 (** Representation of a possibly qualified (and located) identifier. *)
 type qident = (module_path * string) Pos.loc
 
+(** Representation of the associativity of an infix operator. *)
+type assoc =
+  | Assoc_none
+  | Assoc_left
+  | Assoc_right
+
+(** The priority of an infix operator is a floating-point number. *)
+type priority = float
+
 (** Representation of a binary operator. *)
-type binop = string * qident
+type binop = string * assoc * priority * qident
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux Pos.loc
@@ -116,7 +125,7 @@ type p_config =
   (** Toggles logging functions described by string according to boolean. *)
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
-  | P_config_binop   of string * qident
+  | P_config_binop   of binop
   (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
 
 type require_mode =

@@ -337,11 +337,11 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     | Some(RW_TermInIdInTerm(s,p)) ->
         (* This pattern combines the previous.  First, we identify the subterm
            of [g_term] that matches with [p] where [p] contains an identifier.
-           Once we have the value that the identifier in [p] has been matched
-           to we find a subterm of it that matches with [s].
-           Then in all occurrences of the first instance of [p] in [g_term] we
-           rewrite all occurrences of the first instance of [s] in the subterm
-           of [p] that was matched with the identifier. *)
+           Once we have the value that the identifier in [p] has been  matched
+           to, we find a subterm of it that matches with [s].  Then in all the
+           occurrences of the first instance of [p] in [g_term] we rewrite all
+           occurrences of the first instance of [s] in the subterm of [p] that
+           was matched with the identifier. *)
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
         let id_val =
@@ -419,7 +419,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let p_refs = add_refs p_s in
         if not (make_pat g_term p_refs) then
             fatal_no_pos "No subterm of [%a] matches the pattern [%a]"
-                pp g_term pp p_s;
+              pp g_term pp p_s;
         let p = p_refs in
         let pat_refs = add_refs pat in
         (* Here we have already asserted tat an instance of p[s/id] exists

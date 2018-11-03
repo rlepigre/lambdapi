@@ -234,8 +234,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         unsugar_nat_lit sym_z n
     | (P_BinO(l,b,r)  , _         ) ->
-        let (s, _) = find_sym true ss (snd b) in
-        _Appl (_Symb s (Binary(fst b))) [|scope env l; scope env r|]
+        let (op,_,_,qid) = b in
+        let (s, _) = find_sym true ss qid in
+        _Appl (_Symb s (Binary(op))) [|scope env l; scope env r|]
   in
   scope env t
 

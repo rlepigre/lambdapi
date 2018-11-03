@@ -183,10 +183,11 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             let sym = find_sym false ss qid in
             Sign.add_builtin ss.signature s sym;
             {ss with builtins = StrMap.add s sym ss.builtins}
-        | P_config_binop(s,qid)   ->
+        | P_config_binop(binop)   ->
+            let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
-            let sym = find_sym false ss qid in
-            Sign.add_binop ss.signature s sym; ss
+            let (sym, _) = find_sym false ss qid in
+            Sign.add_binop ss.signature s (sym, binop); ss
       end
   | P_infer(t, cfg)            ->
       (* Infer the type of [t]. *)

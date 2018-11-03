@@ -74,7 +74,7 @@ module Prefix :
   end
 
 (** Currently defined binary operators. *)
-let binops : (string * qident) Prefix.t = Prefix.init ()
+let binops : binop Prefix.t = Prefix.init ()
 
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
@@ -86,10 +86,7 @@ let get_binops : module_path -> unit = fun mp ->
     try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
       fatal_no_pos "Module [%a] not loaded (used for binops)." pp_path mp
   in
-  let fn s (sym,_) =
-    let qid = Pos.none Terms.(sym.sym_path, sym.sym_name) in
-    Prefix.add binops s (s,qid)
-  in
+  let fn s (_, binop) = Prefix.add binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
 
 (** Blank function (for comments and white spaces). *)
@@ -142,13 +139,28 @@ let _proofterm_  = KW.create "proofterm"
 
 (** Natural number literal. *)
 let nat_lit =
-  let nat_cs = Charset.from_string "0-9" in
+  let num_cs = Charset.from_string "0-9" in
   let fn buf pos =
     let nb = ref 1 in
-    while Charset.mem nat_cs (Input.get buf (pos + !nb)) do incr nb done;
+    while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
     (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
   in
-  Earley.black_box fn nat_cs false "<nat>"
+  Earley.black_box fn num_cs false "<nat>"
+
+(** Floating-point number literal. *)
+let float_lit =
+  let num_cs = Charset.from_string "0-9" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
+    if Input.get buf (pos + !nb) = '.' then
+      begin
+        incr nb;
+        while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
+      end;
+    (float_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
+  in
+  Earley.black_box fn num_cs false "<float>"
 
 (** String literal. *)
 let string_lit =
@@ -263,8 +275,40 @@ let parser term @(p : prio) =
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
   (* Binary operator. *)
-  | t:(term PAtom) b:binop u:(term PAtom)
-      when p >= PBinO -> in_pos _loc (P_BinO(t,b,u))
+  | t:(term PBinO) b:binop
+      when p >= PBinO ->>
+        (* Find out minimum priorities for left and right operands. *)
+        let (min_pl, min_pr) =
+          let (_, assoc, p, _) = b in
+          let p_plus_epsilon = p +. 1e-6 in
+          match assoc with
+          | Assoc_none  -> (p_plus_epsilon, p_plus_epsilon)
+          | Assoc_left  -> (p             , p_plus_epsilon)
+          | Assoc_right -> (p_plus_epsilon, p             )
+        in
+        (* Check that priority of left operand is above [min_pl]. *)
+        let _ =
+          match t.elt with
+          | P_BinO(_,(_,_,p,_),_) -> if p < min_pl then Earley.give_up ()
+          | _                     -> ()
+        in
+        u:(term PBinO) ->
+          (* Check that priority of the right operand is above [min_pr]. *)
+          let _ =
+            match u.elt with
+            | P_BinO(_,(_,_,p,_),_) -> if p < min_pr then Earley.give_up ()
+            | _                     -> ()
+          in
+          in_pos _loc (P_BinO(t,b,u))
+
+(* NOTE on binary operators. To handle infix binary operators, we need to rely
+   on a dependent (Earley) grammar. The operands are parsed using the priority
+   level [PBinO]. The left operand is parsed first, together with the operator
+   to obtain the corresponding priority and associativity parameters.  We then
+   check whether the (binary operator) priority level [pl] of the left operand
+   satifies the conditions, and reject it earley if it does not. We then parse
+   the right operand in a second step, and also check whether is satisfied the
+   required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
@@ -316,6 +360,11 @@ let parser assertion =
   | t:term ":" a:term -> P_assert_typing(t,a)
   | t:term "≡" u:term -> P_assert_conv(t,u)
 
+let parser assoc =
+  | EMPTY -> Assoc_none
+  | "l"   -> Assoc_left
+  | "r"   -> Assoc_right
+
 (** [config] pases a single configuration option. *)
 let parser config =
   | "verbose" i:''[1-9][0-9]*'' ->
@@ -325,9 +374,10 @@ let parser config =
       P_config_debug(d.[0] = '+', s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
-  | "binop" s:string_lit "≔" qid:qident ->
-      Prefix.add binops s (s,qid);
-      P_config_binop(s,qid)
+  | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
+      let binop = (s, a, p, qid) in
+      Prefix.add binops s binop;
+      P_config_binop(binop)
 
 let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 

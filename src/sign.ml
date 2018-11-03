@@ -5,6 +5,7 @@ open Timed
 open Console
 open Files
 open Terms
+open Syntax
 open Pos
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
@@ -14,7 +15,7 @@ type t =
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : (sym * pp_hint) StrMap.t ref
-  ; sign_binops   : (sym * pp_hint) StrMap.t ref }
+  ; sign_binops   : (sym * binop) StrMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -218,7 +219,7 @@ let add_builtin : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
 
 (** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].
     If [op] was previously bound, the previous binding is discarded. *)
-let add_binop : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
+let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
   sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
 
 (** [dependencies sign] returns an association list containing (the transitive

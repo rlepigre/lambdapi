@@ -47,7 +47,9 @@ let rec pp_p_term : p_term pp = fun oc t ->
         out "@[<hov 2>let %a%a = %a@]@ in@ %a"
           pp_ident x pp_p_args args pp_func t pp_func u
     | (P_NLit(i)         , _    ) -> out "%i" i
-    | (P_BinO(t,(b,_),u) , _    ) -> out "(%a %s %a)" pp_atom t b pp_atom u
+    | (P_BinO(t,b,u)     , _    ) ->
+        let (b, _, _, _) = b in
+        out "(%a %s %a)" pp_atom t b pp_atom u
     | (_                 , _    ) -> out "(%a)" pp_func t
   in
   let rec pp_toplevel _ t =
@@ -151,8 +153,15 @@ let pp_command : command pp = fun oc cmd ->
       out "set debug \"-%s\"" s
   | P_set(P_config_builtin(n,i)  )  ->
       out "set builtin %S ≔ %a" n pp_qident i
-  | P_set(P_config_binop(n,i)    )  ->
-      out "set binop %S ≔ %a" n pp_qident i
+  | P_set(P_config_binop(binop)  )  ->
+      let (s, a, p, qid) = binop in
+      let a =
+        match a with
+        | Assoc_none  -> ""
+        | Assoc_left  -> "l"
+        | Assoc_right -> "r"
+      in
+      out "set infix%s %f %S ≔ %a" a p s pp_qident qid
   | P_infer(t, _)                   ->
       out "@[<hov 4>infer %a@]" pp_p_term t
   | P_normalize(t, _)               ->

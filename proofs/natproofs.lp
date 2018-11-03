@@ -80,7 +80,7 @@ proof
 qed
 
 // Adding the same value is the same as multiplying by 2.
-theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul 2 x))
+theorem add_same_times_two : ∀x, P (eq nat (x + x) (2 × x))
 proof
   intro x
   simpl
@@ -92,7 +92,7 @@ qed
 //////////////////////////////////////////////////////////////////////////////
 
 // This stupid test directly uses the addcomm lemma.
-theorem rewriteTest1 : ∀a b, P (eq nat (add a b) (add b a))
+theorem rewriteTest1 : ∀a b, P (eq nat (a + b) (b + a))
 proof
   intro a b
   //print
@@ -101,12 +101,12 @@ proof
 qed
 
 // This stupid test directly uses the addcomm lemma in one place.
-theorem rewriteTest2 : ∀a b, P (eq nat (add (add a b) b) (add (add b a) b))
+theorem rewriteTest2 : ∀a b, P (eq nat (a + b + b) (b + a + b))
 proof
   intro a b
   //print
-  rewrite [x in (add x b)] addcomm
-  refine refl nat (add (add b a) b)
+  rewrite [x in x + b] addcomm
+  refine refl nat (b + a + b)
 qed
 
 // This stupid test directly uses the addcomm lemma in two places.
