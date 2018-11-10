@@ -84,10 +84,22 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_apply(t)      ->
       (* Scoping the term in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
-      let t = Pos.none (P_Appl(t, Pos.none P_Wild)) in
-      let t = fst (Scope.scope_term StrMap.empty ss env t) in
-      (* Refine using the built term. *)
-      handle_refine t
+      let t0 = fst (Scope.scope_term StrMap.empty ss env t) in
+      (* Infer the type of [t0] and count the number of products. *)
+      (* NOTE there is room for improvement here. *)
+      let nb =
+        match Solve.infer (Ctxt.of_env env) t0 with
+        | Some(a) -> Basics.count_products a
+        | None    -> fatal t.pos "Cannot infer the type of [%a]." Print.pp t0
+      in
+      (* Refine using [t] applied to [nb] wildcards (metavariables). *)
+      (* NOTE it is scoping that handles wildcards as metavariables. *)
+      let rec add_wilds t n =
+        match n with
+        | 0 -> fst (Scope.scope_term StrMap.empty ss env t)
+        | _ -> add_wilds (Pos.none (P_Appl(t, Pos.none P_Wild))) (n-1)
+      in
+      handle_refine (add_wilds t nb)
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->

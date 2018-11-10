@@ -6,7 +6,7 @@
 open Extra
 open Timed
 
-(** {6 Term and rewriting rules representation} *)
+(** {2 Term and rewriting rules representation} *)
 
 (** Representation of a term (or type). *)
 type term =
@@ -165,7 +165,7 @@ type term =
     environment [ar] should only contain (distinct) free variables, as for the
     {!const:Patt(i,s,ar)} constructor. *)
 
-(** {6 Functions related to the handling of metavariables} *)
+(** {2 Functions related to the handling of metavariables} *)
 
 (** [unfold t] repeatedly unfolds the definition of the top level metavariable
     of [t] until a significant {!type:term} constructor is found. Note that it
@@ -238,7 +238,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
    as otherwise we would need to polute the typing context with variables that
    created metavariables should not be allowed to use. *)
 
-(** {6 Type synonyms and basic functions (related to {!module:Bindlib})} *)
+(** {2 Type synonyms and basic functions (related to [Bindlib])} *)
 
 (** A short name for the binding of a term in a term. *)
 type tbinder = (term, term) Bindlib.binder
@@ -264,7 +264,7 @@ let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
 let unbind b = let (_,b) = Bindlib.unbind b in b
 let unbind2 b1 b2 = let (_,b1,b2) = Bindlib.unbind2 b1 b2 in (b1,b2)
 
-(** {6 Smart constructors and lifting (related to {!module:Bindlib})} *)
+(** {2 Smart constructors and lifting (related to [Bindlib])} *)
 
 (** [_Vari x] injects the free variable [x] into the {!type:tbox} type so that
     it may be available for binding. *)

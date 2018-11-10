@@ -4,7 +4,7 @@
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard \ lambdapi pure)
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
- (libraries unix timed bindlib earley.str))
+ (libraries unix timed bindlib earley.core))
 
 (library
  (name pure)

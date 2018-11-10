@@ -10,6 +10,13 @@ open Terms
 let to_tvars : term array -> tvar array =
   Array.map (function Vari(x) -> x | _ -> assert false)
 
+(** [count_products a] returns the number of consecutive products at the  head
+    of the term [a]. *)
+let rec count_products : term -> int = fun t ->
+  match unfold t with
+  | Prod(_,b) -> 1 + count_products (snd (Bindlib.unbind b))
+  | _         -> 0
+
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] and [args] are respectively the head of [t] and the array of arguments
     applied to [h] in [t]. The returned [h] cannot be an {!constr:Appl}. *)
@@ -143,7 +150,7 @@ let distinct_vars : term array -> bool = fun ar ->
   in
   distinct_vars [] (Array.length ar - 1)
 
-(** {6 Conversion of a rule into a "pair" of terms} *)
+(** {2 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term.  The bound higher-order variables of the original RHS are

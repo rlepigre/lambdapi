@@ -13,7 +13,7 @@ let gen_obj = Pervasives.ref false
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
 let parse_file : string -> Syntax.ast = fun fname ->
-  match Filename.check_suffix fname new_src_extension with
+  match Filename.check_suffix fname src_extension with
   | true  -> Parser.parse_file fname
   | false -> Legacy_parser.parse_file fname
 
@@ -23,11 +23,12 @@ let parse_file : string -> Syntax.ast = fun fname ->
     the corresponding object file. *)
 let rec compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
-  let (src, obj) =
-    let new_src = base ^ new_src_extension in
-    if Sys.file_exists new_src then (new_src, base ^ new_obj_extension)
-    else (base ^ src_extension, base ^ obj_extension)
+  let src =
+    let src = base ^ src_extension in
+    let legacy_src = base ^ legacy_src_extension in
+    if Sys.file_exists src then src else legacy_src
   in
+  let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then
     fatal_no_pos "File [%s.{lp|dk}] not found." base;
   if List.mem path !loading then

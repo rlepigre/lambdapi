@@ -202,7 +202,7 @@ if [[ ! -d ${DIR} ]]; then
   echo ""
 else
   # Cleaning up build directory
-  rm -f ${DIR}/*.dko
+  rm -f ${DIR}/*.lpo
   rm -f ${DIR}/error.log
 fi
 
@@ -217,7 +217,7 @@ function check() {
   # Module checking (given its name, without "_sig" or "_prf".
   function check_module() {
     SIG_FILE="$1_sig.dk"
-    OBJ_FILE="$1_sig.dko"
+    OBJ_FILE="$1_sig.lpo"
     PRF_FILE="$1_prf.dk"
     ${LAMBDAPI} --verbose 0 --gen-obj ${SIG_FILE}
     if [ $? -ne 0 ]; then

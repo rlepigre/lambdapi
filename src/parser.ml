@@ -1,5 +1,6 @@
 (** Parsing functions for the Lambdapi syntax. *)
 
+open Earley_core
 open Extra
 open Console
 open Syntax
@@ -172,6 +173,16 @@ let string_lit =
     (String.sub (Input.line buf) (pos+1) (!nb-1), buf, pos + !nb + 1)
   in
   Earley.black_box fn (Charset.singleton '"') false "<string>"
+
+(** Sequence of alphabetical characters. *)
+let alpha =
+  let alpha = Charset.from_string "a-zA-Z" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem alpha (Input.get buf (pos + !nb)) do incr nb done;
+    (String.sub (Input.line buf) pos !nb, buf, pos + !nb)
+  in
+  Earley.black_box fn alpha false "<alpha>"
 
 (** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_]*"]). *)
 let regular_ident =
@@ -367,11 +378,10 @@ let parser assoc =
 
 (** [config] pases a single configuration option. *)
 let parser config =
-  | "verbose" i:''[1-9][0-9]*'' ->
-      P_config_verbose(int_of_string i)
-  | "debug" d:''[-+][a-zA-Z]+'' ->
-      let s = String.sub d 0 (String.length d) in
-      P_config_debug(d.[0] = '+', s)
+  | "verbose" i:nat_lit ->
+      P_config_verbose(i)
+  | "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
+      P_config_debug(b, s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->

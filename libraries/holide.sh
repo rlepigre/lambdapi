@@ -69,7 +69,7 @@ fi
 
 # Checking function.
 function check_holide() {
-  rm -f hol.dko
+  rm -f hol.lpo
   ${LAMBDAPI} --gen-obj hol.dk
   for FILE in `ls *.dk`; do
     if [ ${FILE} != "hol.dk" ]; then

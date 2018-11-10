@@ -139,7 +139,7 @@ distclean: clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.dko" -exec rm {} \;
+	@find . -type f -name "*.lpo" -exec rm {} \;
 
 .PHONY: fullclean
 fullclean: distclean

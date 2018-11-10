@@ -41,6 +41,10 @@ reserved "_"
 <nat_lit> ::=
   | RE("[0-9]+")
 
+// Float literal
+<float_lit> ::=
+  | RE("[0-9]+\([.][0-9]+\)?")
+
 // String literal
 <string_lit> ::=
   | RE("\"[^\"\n]*\"")
@@ -54,6 +58,11 @@ reserved "_"
 <symtag> ::=
   | "const"
   | "injective"
+
+<infix_op> ::=
+  | "+"
+  | "×"
+  | ... // whatever has been defined in the scope.
 
 // Term (including patterns and everything)
 <term> ::=
@@ -69,6 +78,7 @@ reserved "_"
   | "λ" <arg>+ "," <term>
   | "let" <ident> <arg>* "=" <term> "in" <term>
   | <nat_lit>
+  | <term> <infix_op> <term>
 
 // Synonym for types
 <type> ::= <term>
@@ -136,6 +146,7 @@ reserved "_"
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
   | "set" "builtin" <string_lit> "≔" <qident>
+  | "set" "infix" {"l" | "r"}? <float_lit> <string_lit> "≔" <qident>
 
 // Entry point: list of commands.
 <main> ::= <command>*

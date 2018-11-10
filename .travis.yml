@@ -29,7 +29,7 @@ before_install:
   - opam update
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
-  - opam install dune menhir bindlib.5.0.0 timed.1.0 earley.1.1.0 earley-ocaml.1.1.0 yojson cmdliner ppx_inline_test $EXTRA_OPAM
+  - opam install dune menhir bindlib.5.0.0 timed.1.0 earley.2.0.0 yojson cmdliner ppx_inline_test $EXTRA_OPAM
 
 script:
   - make $TEST_TARGETS

@@ -1,6 +1,7 @@
 (** Source code position management.  This module may be used to map sequences
     of characters in a source file to an abstract syntax tree. *)
 
+open Earley_core
 
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source file. Elements of this type are (lazily) constructed

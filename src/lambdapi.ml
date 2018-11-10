@@ -2,6 +2,7 @@
 
 open Core
 open Extra
+open Files
 open Console
 
 (* NOTE only standard [Pervasives] references here. *)
@@ -33,7 +34,7 @@ let handle_file : string -> unit = fun fname ->
     | Beautify  -> Pretty.beautify (Compile.parse_file fname)
     | Normal    ->
     (* Compute the module path (checking the extension). *)
-    let mp = Files.module_path fname in
+    let mp = module_path fname in
     (* Run the compilation, possibly using a timeout. *)
     let compile = Compile.compile true in
     let _ =
@@ -46,7 +47,7 @@ let handle_file : string -> unit = fun fname ->
     match !confluence_checker with
     | None      -> ()
     | Some(cmd) ->
-    let sign = Files.PathMap.find mp Sign.(Timed.(!loaded)) in
+    let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
     match Confluence.check cmd sign with
     | Some(true ) -> ()
     | Some(false) -> fatal_no_pos "The rewrite system is not confluent."
@@ -75,7 +76,7 @@ let spec =
   let spec = Arg.align
     [ ( "--gen-obj"
       , Arg.Set Compile.gen_obj
-      , " Produce object files (\".dko\" extension)." )
+      , Printf.sprintf " Produce object files (%S extension)." obj_extension )
     ; ( "--toolong"
       , Arg.Float ((:=) Handle.too_long)
       , "<flt> Duration considered too long for a command." )

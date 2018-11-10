@@ -4,16 +4,13 @@ open Extra
 open Console
 
 (** [src_extension] is the expected extension for source files. *)
-let src_extension : string = ".dk"
+let src_extension : string = ".lp"
 
 (** [obj_extension] is the expected extension for binary (object) files. *)
-let obj_extension : string = ".dko"
+let obj_extension : string = ".lpo"
 
-(** [lp_src_extension] is the expected extension for source files. *)
-let new_src_extension : string = ".lp"
-
-(** [lp_obj_extension] is the expected extension for binary (object) files. *)
-let new_obj_extension : string = ".lpo"
+(** [legacy_src_extension] is the extension for legacy source files. *)
+let legacy_src_extension : string = ".dk"
 
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
@@ -35,14 +32,15 @@ let pp_path : module_path pp = fun oc mp ->
     file [path], which should not use [".."]. The returned list is formed with
     the subdirectories along the [path], and it is terminated by the file name
     (without extension). Although it is removed, the extension should be given
-    on the file name, and it should correspond to [src_extension]. When [path]
-    is invalid, [Invalid_argument "invalid module path"] is raised. *)
+    on the file name, and it should correspond to [src_extension] (or possibly
+    to the legacy extension [legacy_src_extension]).  When [path] is  invalid,
+    [Invalid_argument "invalid module path"] is raised. *)
 let module_path : string -> module_path = fun fname ->
   let ext_ok = Filename.check_suffix fname src_extension in
-  let ext_ok = ext_ok || Filename.check_suffix fname new_src_extension in
+  let ext_ok = ext_ok || Filename.check_suffix fname legacy_src_extension in
   if not ext_ok then
     fatal_no_pos "Invalid file extension for [%s] (expected [%s] or [%s])."
-      fname src_extension new_src_extension;
+      fname src_extension legacy_src_extension;
   if not (Filename.is_relative fname) then
     fatal_no_pos "Invalid path for [%s] (expected relative path)." fname;
   let base = Filename.chop_extension (Filename.basename fname) in
