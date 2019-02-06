@@ -7,6 +7,9 @@ open Core
 open Core.Extra
 open Core.Console
 
+(* NOTE this is required for initialization of [Parser.require]. *)
+let _ = Compile.compile
+
 (** Representation of a single command (abstract). *)
 module Command = struct
   type t = Syntax.p_cmd

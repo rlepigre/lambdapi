@@ -50,7 +50,7 @@ let json_of_thm thm =
     ]
 *)
 
-let mk_range (p : Pos.pos) : J.json =
+let mk_range (p : Pos.pos) : J.t =
   let open Pos in
   let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
     Lazy.force p
@@ -59,7 +59,7 @@ let mk_range (p : Pos.pos) : J.json =
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
 
 (* let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (thm : Proofs.theorem option)) : J.json = *)
-let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (_thm : unit option)) : J.json =
+let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (_thm : unit option)) : J.t =
   (* let goal = json_of_thm thm in *)
   let range = mk_range p in
   `Assoc ((* mk_extra ["goal_info", goal] @ *)
@@ -68,7 +68,7 @@ let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (_thm : unit opti
            "message",  `String msg;
           ])
 
-let mk_diagnostics ~uri ~version ld : J.json =
+let mk_diagnostics ~uri ~version ld : J.t =
   let extra = mk_extra ["version", `Int version] in
   mk_event "textDocument/publishDiagnostics" @@
     extra @

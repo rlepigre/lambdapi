@@ -17,7 +17,6 @@
 (executable
  (name lambdapi)
  (public_name lambdapi)
- (package lambdapi)
  (modules lambdapi)
  (libraries lambdapi.core))
 

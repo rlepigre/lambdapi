@@ -110,7 +110,8 @@ let link : t -> unit = fun sign ->
   in
   PathMap.iter gn !(sign.sign_deps);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins)
+  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins);
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -118,7 +119,10 @@ let link : t -> unit = fun sign ->
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
-  let unlink_sym s = s.sym_type := Kind; s.sym_rules := [] in
+  let unlink_sym s =
+    if s.sym_path <> sign.sign_path then
+      (s.sym_type := Kind; s.sym_rules := [])
+  in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
     let unlink_term_env t =
@@ -130,7 +134,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s,_)    -> if s.sym_path <> sign.sign_path then unlink_sym s
+    | Symb(s,_)    -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,a)    -> unlink_term t; Array.iter unlink_term a
@@ -152,7 +156,8 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter fn !(sign.sign_symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.sign_deps);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins)
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins);
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
 (** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
     (which should not already be used in [sign]) and with the type [a], in the
@@ -189,12 +194,57 @@ let write : t -> string -> unit = fun sign fname ->
     with an error message. *)
 let read : string -> t = fun fname ->
   let ic = open_in fname in
-  try
-    let sign = Marshal.from_channel ic in
-    close_in ic; sign
-  with Failure _ ->
-    close_in ic;
-    fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+  let sign =
+    try
+      let sign = Marshal.from_channel ic in
+      close_in ic; sign
+    with Failure _ ->
+      close_in ic;
+      fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+  in
+  (* Timed references need reset after unmarshaling (see [Timed] doc). *)
+  let reset_timed_refs sign =
+    unsafe_reset sign.sign_symbols;
+    unsafe_reset sign.sign_deps;
+    unsafe_reset sign.sign_builtins;
+    unsafe_reset sign.sign_binops;
+    let rec reset_term t =
+      let reset_binder b = reset_term (snd (Bindlib.unbind b)) in
+      match unfold t with
+      | Vari(_)     -> ()
+      | Type        -> ()
+      | Kind        -> ()
+      | Symb(s,_)   -> shallow_reset_sym s
+      | Prod(a,b)   -> reset_term a; reset_binder b
+      | Abst(a,t)   -> reset_term a; reset_binder t
+      | Appl(t,a)   -> reset_term t; Array.iter reset_term a
+      | Meta(_,_)   -> assert false
+      | Patt(_,_,m) -> Array.iter reset_term m
+      | TEnv(_,m)   -> Array.iter reset_term m
+      | Wild        -> ()
+      | TRef(r)     -> unsafe_reset r; Option.iter reset_term !r
+    and reset_rule r =
+      Array.iter reset_term r.lhs;
+      reset_term (snd (Bindlib.unmbind r.rhs))
+    and shallow_reset_sym s =
+      unsafe_reset s.sym_type;
+      unsafe_reset s.sym_def;
+      unsafe_reset s.sym_rules
+    in
+    let reset_sym s =
+      shallow_reset_sym s;
+      reset_term !(s.sym_type);
+      Option.iter reset_term !(s.sym_def);
+      List.iter reset_rule !(s.sym_rules)
+    in
+    StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
+    StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_binops);
+    StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_builtins);
+    let fn (_,r) = reset_rule r in
+    PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    sign
+  in
+  reset_timed_refs sign
 
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)

@@ -109,7 +109,7 @@ let grab_doc params =
   let start_doc, end_doc = Hashtbl.(find doc_table doc_file, find completed_table doc_file) in
   doc_file, start_doc, end_doc
 
-let mk_syminfo file (name, _path, kind, pos) : J.json =
+let mk_syminfo file (name, _path, kind, pos) : J.t =
   `Assoc [
     "name", `String name;
     "kind", `Int kind;            (* function *)
@@ -192,7 +192,7 @@ let dispatch_message ofmt dict =
   | msg ->
     LIO.log_error "no_handler" msg
 
-let process_input ofmt (com : J.json) =
+let process_input ofmt (com : J.t) =
   try dispatch_message ofmt (U.to_assoc com)
   with
   | U.Type_error (msg, obj) ->

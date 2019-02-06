@@ -1,19 +1,23 @@
-synopsis: "Implementation of the λΠ-calculus modulo rewriting"
+synopsis: "Proof assistant based on the λΠ-calculus modulo rewriting"
 description:
 """
-Lambdapi is an implementation of the λΠ-calculus modulo rewriting, that is
-mostly compatible with Dedukti (https://github.com/Deducteam/Dedukti).
+Proof assistant based on the λΠ-calculus modulo rewriting,
+mostly compatible with Dedukti.
+
+This package contains both the `lambdapi` proof assistant and the `lp-lsp`
+Language Server Protocol helper for IDEs to check lambdapi files.
 """
 opam-version: "2.0"
 maintainer: "dedukti-dev@inria.fr"
-bug-reports: "https://github.com/rlepigre/lambdapi/issues"
-homepage: "https://github.com/rlepigre/lambdapi"
-dev-repo: "git+https://github.com/rlepigre/lambdapi.git"
+bug-reports: "https://github.com/Deducteam/lambdapi/issues"
+homepage: "https://github.com/Deducteam/lambdapi"
+dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 authors: [
   "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
-  "Frédéric Blanqui <frederic.blanqui@inria.fr>" ]
+  "Frédéric Blanqui <frederic.blanqui@inria.fr>"
+  "Emilio Jesús Gallego Arias <e@x80.org>" ]
 license: "CeCILL"
-doc: "https://rlepigre.github.io/lambdapi/doc"
+doc: "https://deducteam.github.io/lambdapi/"
 
 depends: [
   "ocaml"        {         >= "4.04.0" }
@@ -23,7 +27,12 @@ depends: [
   "earley"       { >= "2.0.0" }
   "timed"        { >= "1.0"   }
 
+  # tests
   "ppx_inline_test" { with-test }
+
+  # lp-lsp dependencies
+  "yojson"       { >= "1.6.0" }
+  "cmdliner"
 ]
 
 build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
